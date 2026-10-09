@@ -4,7 +4,7 @@
  * @author     F.Yousefi - https://www.asiasun.ir
  * @copyright  (C) 2026 AsiaSun.ir, Pvt. Ltd. All rights reserved
  * @license    GNU/GPL http://www.gnu.org/copyleft/gpl.html
- * @version    2.0.1
+ * @version    2.1.0
  */
 
 defined('_JEXEC') or die;

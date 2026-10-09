@@ -5,33 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.1] - 2026-10-10
-
-### Fixed
-- Restored the original layout markup and stylesheet so the visual design matches the previous module.
-- Entry images again use the original path construction and CSS classes.
-
-### Changed
-- Field, title, cover, and category data are loaded in bulk queries instead of one query per entry.
-
-## [2.0.0] - 2026-10-10
+## [2.1.0] - 2026-10-10
 
 ### Added
 - Dual compatibility for Joomla 3.10 and Joomla 4 / 5.
-- Configurable parameters for item count, section ID, sort field, title field, cover field, category field, entry base path, and optional category filter.
+- Default layout matching the existing front-end design: banner background, release date or released state, and category names.
+- Optional Simple layout selectable in the module settings.
+- Configurable section, sort, title, cover, banner and category field IDs.
+- Bulk loading of entry fields instead of one query per entry.
 - English and Persian administrator language files.
-- Helper class for SobiPro field decoding and entry queries.
-- `CHANGELOG.md` shipped in the install package.
 - Joomla Update Server declaration with SHA-256 support.
 
 ### Changed
-- Module element renamed from `mod_lidapp_latest_games` to `mod_sobipro_latest_entries`.
-- Logic moved out of the layout file into a dedicated helper.
-- CSS class names updated to remove the previous prefix.
-
-### Fixed
-- Output of titles and URLs is escaped.
-- Database access uses the query builder and `getDbo()`.
+- Module element renamed to `mod_sobipro_latest_entries`.
+- Both layouts ship with the module and do not depend on a template override.
 
 ## [1.0.0] - 2016-06-15
 

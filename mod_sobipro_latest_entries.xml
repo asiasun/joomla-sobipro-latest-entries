@@ -7,7 +7,7 @@
 	<creationDate>2026-10-10</creationDate>
 	<copyright>(C) 2026 AsiaSun.ir, Pvt. Ltd. All rights reserved</copyright>
 	<license>GNU/GPL http://www.gnu.org/copyleft/gpl.html</license>
-	<version>2.0.1</version>
+	<version>2.1.0</version>
 	<description>MOD_SOBIPRO_LATEST_ENTRIES_XML_DESCRIPTION</description>
 
 	<files>
@@ -32,14 +32,14 @@
 	<config>
 		<fields name="params">
 			<fieldset name="basic">
-				<field name="items_count" type="number" default="10" filter="integer" label="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_ITEMS_COUNT" description="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_ITEMS_COUNT_DESC" />
-				<field name="section_id" type="text" default="1" filter="integer" label="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_SECTION" description="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_SECTION_DESC" />
+				<field name="items_count" type="number" default="8" filter="integer" label="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_ITEMS_COUNT" />
+				<field name="section_id" type="text" default="1" filter="integer" label="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_SECTION" />
 				<field name="sort_field_id" type="text" default="49" filter="integer" label="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_SORT_FID" description="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_SORT_FID_DESC" />
-				<field name="title_field_id" type="text" default="1" filter="integer" label="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_TITLE_FID" description="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_TITLE_FID_DESC" />
+				<field name="title_field_id" type="text" default="1" filter="integer" label="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_TITLE_FID" />
 				<field name="cover_field_id" type="text" default="48" filter="integer" label="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_COVER_FID" description="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_COVER_FID_DESC" />
+				<field name="banner_field_id" type="text" default="62" filter="integer" label="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_BANNER_FID" description="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_BANNER_FID_DESC" />
 				<field name="category_field_id" type="text" default="77" filter="integer" label="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_CATEGORY_FID" description="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_CATEGORY_FID_DESC" />
-				<field name="entry_base_path" type="text" default="game-profile" label="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_BASE_PATH" description="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_BASE_PATH_DESC" />
-				<field name="allowed_categories" type="textarea" rows="3" label="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_ALLOWED_CATS" description="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_ALLOWED_CATS_DESC" />
+				<field name="entry_base_path" type="text" default="game-profile" label="MOD_SOBIPRO_LATEST_ENTRIES_FIELD_BASE_PATH" />
 			</fieldset>
 			<fieldset name="advanced">
 				<field name="layout" type="modulelayout" label="JFIELD_ALT_LAYOUT_LABEL" description="JFIELD_ALT_MODULE_LAYOUT_DESC" />

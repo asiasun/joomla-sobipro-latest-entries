@@ -4,7 +4,7 @@
  * @author     F.Yousefi - https://www.asiasun.ir
  * @copyright  (C) 2026 AsiaSun.ir, Pvt. Ltd. All rights reserved
  * @license    GNU/GPL http://www.gnu.org/copyleft/gpl.html
- * @version    2.0.1
+ * @version    2.1.0
  */
 
 defined('_JEXEC') or die;
@@ -40,23 +40,13 @@ class ModSobiproLatestEntriesHelper
 	{
 		$db = JFactory::getDbo();
 
-		$limit = max(1, (int) $params->get('items_count', 10));
+		$limit = max(1, (int) $params->get('items_count', 8));
 		$sectionId = max(1, (int) $params->get('section_id', 1));
 		$sortFieldId = max(1, (int) $params->get('sort_field_id', 49));
 		$titleFieldId = max(1, (int) $params->get('title_field_id', 1));
 		$coverFieldId = max(1, (int) $params->get('cover_field_id', 48));
+		$bannerFieldId = max(1, (int) $params->get('banner_field_id', 62));
 		$categoryFieldId = max(1, (int) $params->get('category_field_id', 77));
-
-		$allowedRaw = trim((string) $params->get('allowed_categories', ''));
-		$allowedCategories = array();
-		if ($allowedRaw !== '') {
-			foreach (explode(',', $allowedRaw) as $cid) {
-				$cid = (int) trim($cid);
-				if ($cid > 0) {
-					$allowedCategories[] = $cid;
-				}
-			}
-		}
 
 		$query = $db->getQuery(true)
 			->select(array('a.sid', 'a.baseData AS sort_value'))
@@ -68,33 +58,38 @@ class ModSobiproLatestEntriesHelper
 			->where('b.approved = 1')
 			->order('a.baseData DESC');
 
-		$db->setQuery($query, 0, $limit * 8);
+		$db->setQuery($query, 0, $limit * 5);
 		$rows = $db->loadObjectList();
 
 		if (!is_array($rows) || !$rows) {
 			return array();
 		}
 
-		$candidateIds = array();
+		$sids = array();
 		foreach ($rows as $row) {
 			$sid = (int) $row->sid;
-			if ($sid > 0 && !isset($candidateIds[$sid])) {
-				$candidateIds[$sid] = true;
+			if ($sid > 0 && !isset($sids[$sid])) {
+				$sids[$sid] = true;
 			}
 		}
-		$candidateIds = array_keys($candidateIds);
-
-		if (!$candidateIds) {
+		$sidList = implode(',', array_keys($sids));
+		if ($sidList === '') {
 			return array();
 		}
 
-		$idList = implode(',', $candidateIds);
+		$fids = array_unique(array(
+			(int) $titleFieldId,
+			(int) $coverFieldId,
+			(int) $bannerFieldId,
+			(int) $categoryFieldId,
+			(int) $sortFieldId,
+		));
 
 		$fieldQuery = $db->getQuery(true)
 			->select(array('sid', 'fid', 'baseData'))
 			->from($db->quoteName('#__sobipro_field_data'))
-			->where('sid IN (' . $idList . ')')
-			->where('fid IN (' . (int) $titleFieldId . ',' . (int) $coverFieldId . ',' . (int) $categoryFieldId . ')');
+			->where('sid IN (' . $sidList . ')')
+			->where('fid IN (' . implode(',', $fids) . ')');
 		$db->setQuery($fieldQuery);
 		$fieldRows = $db->loadObjectList();
 
@@ -105,41 +100,44 @@ class ModSobiproLatestEntriesHelper
 			}
 		}
 
-		$objQuery = $db->getQuery(true)
-			->select(array('id', 'nid'))
-			->from($db->quoteName('#__sobipro_object'))
-			->where('id IN (' . $idList . ')');
-		$db->setQuery($objQuery);
-		$objRows = $db->loadObjectList('id');
-
 		$categoryIds = array();
 		$decodedCats = array();
-		foreach ($candidateIds as $sid) {
+		foreach (array_keys($sids) as $sid) {
 			$raw = isset($fields[$sid][$categoryFieldId]) ? $fields[$sid][$categoryFieldId] : '';
 			$cats = self::decodeSobiProString($raw);
 			if (!is_array($cats)) {
 				$cats = array();
 			}
 			$decodedCats[$sid] = $cats;
-			if (!empty($cats[0])) {
-				$categoryIds[(int) $cats[0]] = true;
+			foreach (array_slice($cats, 0, 5) as $cid) {
+				$cid = (int) $cid;
+				if ($cid > 0) {
+					$categoryIds[$cid] = true;
+				}
 			}
 		}
 
-		$catNids = array();
+		$categoryNames = array();
 		if ($categoryIds) {
 			$catQuery = $db->getQuery(true)
-				->select(array('id', 'nid'))
+				->select(array('id', 'name'))
 				->from($db->quoteName('#__sobipro_object'))
 				->where('id IN (' . implode(',', array_keys($categoryIds)) . ')');
 			$db->setQuery($catQuery);
 			$catRows = $db->loadObjectList();
 			if (is_array($catRows)) {
 				foreach ($catRows as $cr) {
-					$catNids[(int) $cr->id] = (string) $cr->nid;
+					$categoryNames[(int) $cr->id] = (string) $cr->name;
 				}
 			}
 		}
+
+		$objQuery = $db->getQuery(true)
+			->select(array('id', 'nid'))
+			->from($db->quoteName('#__sobipro_object'))
+			->where('id IN (' . $sidList . ')');
+		$db->setQuery($objQuery);
+		$objects = $db->loadObjectList('id');
 
 		$entries = array();
 		$seen = array();
@@ -155,41 +153,26 @@ class ModSobiproLatestEntriesHelper
 			}
 			$seen[$sid] = true;
 
-			$cats = isset($decodedCats[$sid]) ? $decodedCats[$sid] : array();
+			$cover = self::decodeSobiProString(isset($fields[$sid][$coverFieldId]) ? $fields[$sid][$coverFieldId] : '');
+			$banner = self::decodeSobiProString(isset($fields[$sid][$bannerFieldId]) ? $fields[$sid][$bannerFieldId] : '');
+			$arze = isset($fields[$sid][$sortFieldId]) ? $fields[$sid][$sortFieldId] : (string) $row->sort_value;
 
-			if ($allowedCategories) {
-				$ok = false;
-				foreach ($cats as $cid) {
-					if (in_array((int) $cid, $allowedCategories, true)) {
-						$ok = true;
-						break;
-					}
+			$names = array();
+			foreach (array_slice($decodedCats[$sid], 0, 5) as $cid) {
+				$cid = (int) $cid;
+				if ($cid > 0 && !empty($categoryNames[$cid])) {
+					$names[] = $categoryNames[$cid];
 				}
-				if (!$ok) {
-					continue;
-				}
-			}
-
-			$title = isset($fields[$sid][$titleFieldId]) ? (string) $fields[$sid][$titleFieldId] : '';
-			$coverRaw = isset($fields[$sid][$coverFieldId]) ? $fields[$sid][$coverFieldId] : '';
-			$cover = self::decodeSobiProString($coverRaw);
-			$image = '';
-			if (is_array($cover)) {
-				$image = !empty($cover['thumb']) ? $cover['thumb'] : (!empty($cover['original']) ? $cover['original'] : '');
-			}
-
-			$nid = isset($objRows[$sid]) ? (string) $objRows[$sid]->nid : '';
-			$catNid = '';
-			if (!empty($cats[0]) && isset($catNids[(int) $cats[0]])) {
-				$catNid = $catNids[(int) $cats[0]];
 			}
 
 			$entries[] = (object) array(
 				'sid' => $sid,
-				'title' => $title,
-				'nid' => $nid,
-				'image' => $image,
-				'category_nid' => $catNid,
+				'title' => isset($fields[$sid][$titleFieldId]) ? (string) $fields[$sid][$titleFieldId] : '',
+				'nid' => isset($objects[$sid]) ? (string) $objects[$sid]->nid : '',
+				'thumb' => is_array($cover) && !empty($cover['thumb']) ? $cover['thumb'] : '',
+				'banner' => is_array($banner) && !empty($banner['image']) ? $banner['image'] : '',
+				'arze' => $arze,
+				'categories' => $names,
 			);
 		}
 
@@ -199,18 +182,26 @@ class ModSobiproLatestEntriesHelper
 	public static function buildUrl($entry, $basePath)
 	{
 		$base = trim((string) $basePath, '/');
-		$parts = array();
+		$slug = $entry->sid . '-' . $entry->nid;
+		return JUri::root() . ($base !== '' ? $base . '/' : '') . $slug;
+	}
 
-		if ($base !== '') {
-			$parts[] = $base;
+	public static function isReleased($arze)
+	{
+		$ts = self::toTimestamp($arze);
+		return $ts > 0 && $ts <= time();
+	}
+
+	public static function toTimestamp($value)
+	{
+		$value = trim((string) $value);
+		if ($value === '') {
+			return 0;
 		}
-
-		if ($entry->category_nid !== '') {
-			$parts[] = $entry->category_nid;
+		if (ctype_digit($value)) {
+			return (int) $value;
 		}
-
-		$parts[] = $entry->sid . '-' . $entry->nid;
-
-		return JUri::root() . implode('/', $parts);
+		$ts = strtotime($value);
+		return $ts ? (int) $ts : 0;
 	}
 }
