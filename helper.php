@@ -4,7 +4,7 @@
  * @author     F.Yousefi - https://www.asiasun.ir
  * @copyright  (C) 2026 AsiaSun.ir, Pvt. Ltd. All rights reserved
  * @license    GNU/GPL http://www.gnu.org/copyleft/gpl.html
- * @version    2.0.0
+ * @version    2.0.1
  */
 
 defined('_JEXEC') or die;
@@ -59,23 +59,86 @@ class ModSobiproLatestEntriesHelper
 		}
 
 		$query = $db->getQuery(true)
-			->select(array(
-				'a.sid',
-				'a.baseData AS sort_value',
-			))
+			->select(array('a.sid', 'a.baseData AS sort_value'))
 			->from($db->quoteName('#__sobipro_field_data', 'a'))
 			->join('INNER', $db->quoteName('#__sobipro_object', 'b') . ' ON a.sid = b.id')
 			->where('a.fid = ' . (int) $sortFieldId)
 			->where('a.section = ' . (int) $sectionId)
-			->where("b.oType = " . $db->quote('entry'))
+			->where('b.oType = ' . $db->quote('entry'))
 			->where('b.approved = 1')
 			->order('a.baseData DESC');
 
-		$db->setQuery($query, 0, $limit * 5);
+		$db->setQuery($query, 0, $limit * 8);
 		$rows = $db->loadObjectList();
 
-		if (!is_array($rows)) {
+		if (!is_array($rows) || !$rows) {
 			return array();
+		}
+
+		$candidateIds = array();
+		foreach ($rows as $row) {
+			$sid = (int) $row->sid;
+			if ($sid > 0 && !isset($candidateIds[$sid])) {
+				$candidateIds[$sid] = true;
+			}
+		}
+		$candidateIds = array_keys($candidateIds);
+
+		if (!$candidateIds) {
+			return array();
+		}
+
+		$idList = implode(',', $candidateIds);
+
+		$fieldQuery = $db->getQuery(true)
+			->select(array('sid', 'fid', 'baseData'))
+			->from($db->quoteName('#__sobipro_field_data'))
+			->where('sid IN (' . $idList . ')')
+			->where('fid IN (' . (int) $titleFieldId . ',' . (int) $coverFieldId . ',' . (int) $categoryFieldId . ')');
+		$db->setQuery($fieldQuery);
+		$fieldRows = $db->loadObjectList();
+
+		$fields = array();
+		if (is_array($fieldRows)) {
+			foreach ($fieldRows as $fr) {
+				$fields[(int) $fr->sid][(int) $fr->fid] = $fr->baseData;
+			}
+		}
+
+		$objQuery = $db->getQuery(true)
+			->select(array('id', 'nid'))
+			->from($db->quoteName('#__sobipro_object'))
+			->where('id IN (' . $idList . ')');
+		$db->setQuery($objQuery);
+		$objRows = $db->loadObjectList('id');
+
+		$categoryIds = array();
+		$decodedCats = array();
+		foreach ($candidateIds as $sid) {
+			$raw = isset($fields[$sid][$categoryFieldId]) ? $fields[$sid][$categoryFieldId] : '';
+			$cats = self::decodeSobiProString($raw);
+			if (!is_array($cats)) {
+				$cats = array();
+			}
+			$decodedCats[$sid] = $cats;
+			if (!empty($cats[0])) {
+				$categoryIds[(int) $cats[0]] = true;
+			}
+		}
+
+		$catNids = array();
+		if ($categoryIds) {
+			$catQuery = $db->getQuery(true)
+				->select(array('id', 'nid'))
+				->from($db->quoteName('#__sobipro_object'))
+				->where('id IN (' . implode(',', array_keys($categoryIds)) . ')');
+			$db->setQuery($catQuery);
+			$catRows = $db->loadObjectList();
+			if (is_array($catRows)) {
+				foreach ($catRows as $cr) {
+					$catNids[(int) $cr->id] = (string) $cr->nid;
+				}
+			}
 		}
 
 		$entries = array();
@@ -87,27 +150,16 @@ class ModSobiproLatestEntriesHelper
 			}
 
 			$sid = (int) $row->sid;
-			if (isset($seen[$sid])) {
+			if ($sid <= 0 || isset($seen[$sid])) {
 				continue;
 			}
 			$seen[$sid] = true;
 
-			$catQuery = $db->getQuery(true)
-				->select('baseData')
-				->from($db->quoteName('#__sobipro_field_data'))
-				->where('fid = ' . (int) $categoryFieldId)
-				->where('sid = ' . $sid);
-			$db->setQuery($catQuery);
-			$catRaw = $db->loadResult();
-
-			$categories = self::decodeSobiProString($catRaw);
-			if (!is_array($categories)) {
-				$categories = array();
-			}
+			$cats = isset($decodedCats[$sid]) ? $decodedCats[$sid] : array();
 
 			if ($allowedCategories) {
 				$ok = false;
-				foreach ($categories as $cid) {
+				foreach ($cats as $cid) {
 					if (in_array((int) $cid, $allowedCategories, true)) {
 						$ok = true;
 						break;
@@ -118,48 +170,24 @@ class ModSobiproLatestEntriesHelper
 				}
 			}
 
-			$titleQuery = $db->getQuery(true)
-				->select('baseData')
-				->from($db->quoteName('#__sobipro_field_data'))
-				->where('fid = ' . (int) $titleFieldId)
-				->where('sid = ' . $sid);
-			$db->setQuery($titleQuery);
-			$title = (string) $db->loadResult();
-
-			$coverQuery = $db->getQuery(true)
-				->select('baseData')
-				->from($db->quoteName('#__sobipro_field_data'))
-				->where('fid = ' . (int) $coverFieldId)
-				->where('sid = ' . $sid);
-			$db->setQuery($coverQuery);
-			$coverRaw = $db->loadResult();
+			$title = isset($fields[$sid][$titleFieldId]) ? (string) $fields[$sid][$titleFieldId] : '';
+			$coverRaw = isset($fields[$sid][$coverFieldId]) ? $fields[$sid][$coverFieldId] : '';
 			$cover = self::decodeSobiProString($coverRaw);
 			$image = '';
 			if (is_array($cover)) {
 				$image = !empty($cover['thumb']) ? $cover['thumb'] : (!empty($cover['original']) ? $cover['original'] : '');
 			}
 
-			$objQuery = $db->getQuery(true)
-				->select(array('id', 'nid'))
-				->from($db->quoteName('#__sobipro_object'))
-				->where('id = ' . $sid);
-			$db->setQuery($objQuery);
-			$obj = $db->loadObject();
-
+			$nid = isset($objRows[$sid]) ? (string) $objRows[$sid]->nid : '';
 			$catNid = '';
-			if (!empty($categories[0])) {
-				$catObjQuery = $db->getQuery(true)
-					->select('nid')
-					->from($db->quoteName('#__sobipro_object'))
-					->where('id = ' . (int) $categories[0]);
-				$db->setQuery($catObjQuery);
-				$catNid = (string) $db->loadResult();
+			if (!empty($cats[0]) && isset($catNids[(int) $cats[0]])) {
+				$catNid = $catNids[(int) $cats[0]];
 			}
 
 			$entries[] = (object) array(
 				'sid' => $sid,
 				'title' => $title,
-				'nid' => $obj ? (string) $obj->nid : '',
+				'nid' => $nid,
 				'image' => $image,
 				'category_nid' => $catNid,
 			);
